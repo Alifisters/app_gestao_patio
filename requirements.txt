@@ -1,7 +1,7 @@
-plotly
-streamlit
-pandas
 json
 re
 datetime
 requests
+pandas
+plotly
+streamlit
