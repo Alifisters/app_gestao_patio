@@ -1,3 +1,7 @@
 ploty
 streamlit
 pandas
+json
+re
+datetime
+requests
