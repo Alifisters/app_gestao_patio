@@ -1,5 +1,3 @@
-re
-datetime
 requests
 pandas
 plotly
