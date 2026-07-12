@@ -1,4 +1,4 @@
-ploty
+plotly
 streamlit
 pandas
 json
