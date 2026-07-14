@@ -29,7 +29,7 @@ def exe_etl_siab():
     API_RELATORIO = f"{BASE_URL}/Administrativo/SIAB/GetRelatorioRP"
     API_SIAB = f'{BASE_URL}/Administrativo/SIAB/GetRelatorioPatio'
     URL_SIAB_MOV = f"{BASE_URL}/Administrativo/SIAB/RelatorioMovimentacoes"
-    	  dados_sap=pd.read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQKckvCwnh8plPAJi8XIr6u63bAq3PVtCkYjyjtdgYGiDs7L6DT1Y9BSqjNGSE6ElktQCMJUxXfpb5z/pub?gid=1602540452&single=true&output=csv")
+    dados_sap=pd.read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQKckvCwnh8plPAJi8XIr6u63bAq3PVtCkYjyjtdgYGiDs7L6DT1Y9BSqjNGSE6ElktQCMJUxXfpb5z/pub?gid=1602540452&single=true&output=csv")
 
 
     CENTROS_ARMAZENS = [
@@ -364,4 +364,3 @@ def calculo_media(df, nome_col1: str, nome_col2: str):
 
     # Formata garantindo que os números fiquem com dois dígitos (ex: 05 em vez de 5)
     return f"{horas:02d}:{minutos:02d}:{segundos:02d}"
-print("apenas para reiniciar")
