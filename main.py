@@ -4,7 +4,7 @@ import plotly.express as px
 from gestao_patio import exe_etl_siab, calculo_media
 
 
-@st.cache_data(ttl=3)
+@st.cache_data(ttl=3600)
 def carregar_dados_api():
     patio_interno, patio_externo, mov_ticket, his_siab, dados_sap = exe_etl_siab()
     return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap
