@@ -317,17 +317,17 @@ def exe_etl_siab():
                                       .str.upper()
                                       .str.replace("/", " ", regex=False)
                                       .str.replace(".", " ", regex=False)
-                                      .str.replace("  ", " ", regex=False))
+                                      .str.replace("  ", " ", regex=False).strip())
     tabela_final_aberto["Transacionador"] = (tabela_final_aberto["Transacionador"]
                                              .str.upper()
                                              .str.replace("/", " ", regex=False)
                                              .str.replace(".", " ", regex=False)
-                                             .str.replace("  ", " ", regex=False))
+                                             .str.replace("  ", " ", regex=False).strip())
     df_movimentos["Transacionador"] = (df_movimentos["Transacionador"]
                                        .str.upper()
                                        .str.replace("/", " ", regex=False)
                                        .str.replace(".", " ", regex=False)
-                                       .str.replace("  ", " ", regex=False))
+                                       .str.replace("  ", " ", regex=False).strip())
     # ====================================================================================
     # CRIANDO MEDIDAS DE TEMPO PARA ANALISE DE PERFORMANCE EM CADA ETAPA
     # ====================================================================================
