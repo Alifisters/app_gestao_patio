@@ -4,7 +4,7 @@ import plotly.express as px
 from gestao_patio import exe_etl_siab, calculo_media
 
 
-@st.cache_data(ttl=1200)
+@st.cache_data(ttl=3600)
 def carregar_dados_api():
     patio_interno, patio_externo, mov_ticket, his_siab, dados_sap = exe_etl_siab()
     return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap
@@ -90,175 +90,232 @@ tmp_ini_carr = calculo_media(
 tmp_carreg = calculo_media(tempos_siab, 'Pesagem de Entrada', 'Pesagem Saída')
 tmp_liberacao = calculo_media(tempos_siab, 'Pesagem Saída', 'Saída Portaria')
 
-# Gráfico de patio externo e visuais de média de tempo
-with st.container():
-    st.markdown("<h1 style='color: ##F8F8FF; font-size: 16px; margin-bottom: 10px;'>TEMPO MÉDIO POR ETAPA</h1>",
-                unsafe_allow_html=True)
-    col_med_temp, col_med_temp2, col_med_temp3, col_med_temp4 = st.columns(
-        4)
-    st.markdown("""
-        <style>
-        .caixa-metrica {
-            background-color: #1C1C1C;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 1px 1px 3px rgba(0,0,0,0.7);
-            margin-bottom: 10px;
-        }
-        .titulo-metrica {
-            font-size: 13px;
-            color: #999;
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-        .valor-metrica {
-            font-size: 22px;
-            font-weight: 900;
-            color: #999;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+tab_graficos, tab_whatsapp = st.tabs(["📊 Painel Gerencial", "📱 Relatório WhatsApp"])
 
-    with col_med_temp:
-        st.markdown(f"""
-        <div class="caixa-metrica">
-            <div class="titulo-metrica">Tempo Espera Entrada</div>
-            <div class="valor-metrica">{tmp_entrada}</div>
-        </div>
-    """, unsafe_allow_html=True)
+with tab_graficos:
+    # Gráfico de patio externo e visuais de média de tempo
+    with st.container():
+        st.markdown("<h1 style='color: ##F8F8FF; font-size: 16px; margin-bottom: 10px;'>TEMPO MÉDIO POR ETAPA</h1>",
+                    unsafe_allow_html=True)
+        col_med_temp, col_med_temp2, col_med_temp3, col_med_temp4 = st.columns(
+            4)
+        st.markdown("""
+            <style>
+            .caixa-metrica {
+                background-color: #1C1C1C;
+                padding: 15px;
+                border-radius: 8px;
+                text-align: center;
+                box-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+                margin-bottom: 10px;
+            }
+            .titulo-metrica {
+                font-size: 13px;
+                color: #999;
+                text-transform: uppercase;
+                font-weight: 700;
+                margin-bottom: 5px;
+            }
+            .valor-metrica {
+                font-size: 22px;
+                font-weight: 900;
+                color: #999;
+            }
+            </style>
+        """, unsafe_allow_html=True)
 
-    with col_med_temp2:
-        st.markdown(f"""
-        <div class="caixa-metrica">
-            <div class="titulo-metrica">Tempo Inicio Carregamento</div>
-            <div class="valor-metrica">{tmp_ini_carr}</div>
-        </div>
-    """, unsafe_allow_html=True)
+        with col_med_temp:
+            st.markdown(f"""
+            <div class="caixa-metrica">
+                <div class="titulo-metrica">Tempo Espera Entrada</div>
+                <div class="valor-metrica">{tmp_entrada}</div>
+            </div>
+        """, unsafe_allow_html=True)
 
-    with col_med_temp3:
-        st.markdown(f"""
-        <div class="caixa-metrica">
-            <div class="titulo-metrica">Tempo Carregamento</div>
-            <div class="valor-metrica">{tmp_carreg}</div>
-        </div>
-    """, unsafe_allow_html=True)
+        with col_med_temp2:
+            st.markdown(f"""
+            <div class="caixa-metrica">
+                <div class="titulo-metrica">Tempo Inicio Carregamento</div>
+                <div class="valor-metrica">{tmp_ini_carr}</div>
+            </div>
+        """, unsafe_allow_html=True)
 
-    with col_med_temp4:
-        st.markdown(f"""
-        <div class="caixa-metrica">
-            <div class="titulo-metrica">Tempo Liberação Saída</div>
-            <div class="valor-metrica">{tmp_liberacao}</div>
-        </div>
-    """, unsafe_allow_html=True)
+        with col_med_temp3:
+            st.markdown(f"""
+            <div class="caixa-metrica">
+                <div class="titulo-metrica">Tempo Carregamento</div>
+                <div class="valor-metrica">{tmp_carreg}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        with col_med_temp4:
+            st.markdown(f"""
+            <div class="caixa-metrica">
+                <div class="titulo-metrica">Tempo Liberação Saída</div>
+                <div class="valor-metrica">{tmp_liberacao}</div>
+            </div>
+        """, unsafe_allow_html=True)
 
 
-# Gráficos de PATIO INTERNO e VEICULOS CARREGADOS POR DIA
-with st.container():
-    col_patio_int, col_qtd_dia = st.columns(2)
-    with col_patio_int:
-        if not patio_interno_filt.empty:  # Gráfico Patio interno
-            patio_interno_agrp = patio_interno_filt.groupby(
-                ['Próxima Etapa', 'Centro']).size().reset_index(name="Qtd Veiculos")
+    # Gráficos de PATIO INTERNO e VEICULOS CARREGADOS POR DIA
+    with st.container():
+        col_patio_int, col_qtd_dia = st.columns(2)
+        with col_patio_int:
+            if not patio_interno_filt.empty:  # Gráfico Patio interno
+                patio_interno_agrp = patio_interno_filt.groupby(
+                    ['Próxima Etapa', 'Centro']).size().reset_index(name="Qtd Veiculos")
 
-            fig = px.bar(
-                patio_interno_agrp,
-                # Eixo Y = Etapa (Fica na vertical do gráfico horizontal)
-                x='Centro',
-                y='Qtd Veiculos',             # Eixo X = Quantidade
-                color='Próxima Etapa',              # Cada armazém terá uma cor diferente
-                orientation='v',              # Transforma a barra em Horizontal
-                text="Qtd Veiculos",
-                title="Qtd Veículos/Etapa Pendente/Armazém",
-                # 'group' deixa as barras lado a lado, mude para 'stack' para empilhar
-                barmode='stack'
-            )
+                fig = px.bar(
+                    patio_interno_agrp,
+                    # Eixo Y = Etapa (Fica na vertical do gráfico horizontal)
+                    x='Centro',
+                    y='Qtd Veiculos',             # Eixo X = Quantidade
+                    color='Próxima Etapa',              # Cada armazém terá uma cor diferente
+                    orientation='v',              # Transforma a barra em Horizontal
+                    text="Qtd Veiculos",
+                    title="Qtd Veículos/Etapa Pendente/Armazém",
+                    # 'group' deixa as barras lado a lado, mude para 'stack' para empilhar
+                    barmode='stack'
+                )
 
-        # Customizações visuais solicitadas: posicionar número acima e remover as linhas
-            fig.update_traces(
-                textposition='outside',       # Força o número a ficar ACIMA da coluna vertical
-                cliponaxis=False              # Evita que números altos sumam no topo do gráfico
-            )
+            # Customizações visuais solicitadas: posicionar número acima e remover as linhas
+                fig.update_traces(
+                    textposition='outside',       # Força o número a ficar ACIMA da coluna vertical
+                    cliponaxis=False              # Evita que números altos sumam no topo do gráfico
+                )
 
-            fig.update_layout(
-                yaxis_showgrid=False,
-                xaxis_showgrid=False,
-                yaxis_visible=False,
-                xaxis_title="Centro-Armazem",
-                legend_title="Etapas da Operação",
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
+                fig.update_layout(
+                    yaxis_showgrid=False,
+                    xaxis_showgrid=False,
+                    yaxis_visible=False,
+                    xaxis_title="Centro-Armazem",
+                    legend_title="Etapas da Operação",
+                    plot_bgcolor='rgba(0,0,0,0)'
+                )
 
-            # Renderiza o gráfico na tela
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning(
-                "Nenhum veículo encontrado para a combinação de filtros selecionada.")
+                # Renderiza o gráfico na tela
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(
+                    "Nenhum veículo encontrado para a combinação de filtros selecionada.")
 
-    with col_qtd_dia:
-        if not veiculos_dia.empty:  # Gráfico Qtd Veiculos por dia
-            veiculos_dia = veiculos_dia[["Pesagem Saída", "Centro-Armazem", "Placa"]].groupby(
-                ["Pesagem Saída", "Centro-Armazem"]).count().reset_index()
-            fig_qtd_dia = px.bar(
-                veiculos_dia,
-                x="Centro-Armazem",
-                y="Placa",
-                color="Pesagem Saída",
-                text="Placa",
-                title="Qtd Veiculos Pesados",
-                barmode='group',
-                orientation="v",
-                labels={'Placa': 'N° Veiculos'}
-            )
-            fig_qtd_dia.update_traces(
-                textposition="outside",
-                cliponaxis=False
-            )
-            fig_qtd_dia.update_layout(
-                yaxis_showgrid=False,
-                xaxis_showgrid=False,
-                xaxis_visible=True,
-                legend_title="Data Pesagem",
-                plot_bgcolor="rgba(0,0,0,0)"
-            )
-            st.plotly_chart(fig_qtd_dia, use_container_width=True)
-        else:
-            st.warning(
-                "Sem dados de veiculos nesse periodo para essa combinação de filtros (Cliente e Centro)")
+        with col_qtd_dia:
+            if not veiculos_dia.empty:  # Gráfico Qtd Veiculos por dia
+                veiculos_dia = veiculos_dia[["Pesagem Saída", "Centro-Armazem", "Placa"]].groupby(
+                    ["Pesagem Saída", "Centro-Armazem"]).count().reset_index()
+                fig_qtd_dia = px.bar(
+                    veiculos_dia,
+                    x="Centro-Armazem",
+                    y="Placa",
+                    color="Pesagem Saída",
+                    text="Placa",
+                    title="Qtd Veiculos Pesados",
+                    barmode='group',
+                    orientation="v",
+                    labels={'Placa': 'N° Veiculos'}
+                )
+                fig_qtd_dia.update_traces(
+                    textposition="outside",
+                    cliponaxis=False
+                )
+                fig_qtd_dia.update_layout(
+                    yaxis_showgrid=False,
+                    xaxis_showgrid=False,
+                    xaxis_visible=True,
+                    legend_title="Data Pesagem",
+                    plot_bgcolor="rgba(0,0,0,0)"
+                )
+                st.plotly_chart(fig_qtd_dia, use_container_width=True)
+            else:
+                st.warning(
+                    "Sem dados de veiculos nesse periodo para essa combinação de filtros (Cliente e Centro)")
 
-# Gráfico de volume pesado por dia
-if not pesagem_dia.empty:
-    pesagem_dia = pesagem_dia[["Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]
-                              ].groupby(["Pesagem Saída", "Centro-Armazem"]).sum().reset_index()
-    fig_pesagem = px.bar(
-        pesagem_dia,
-        x='Centro-Armazem',
-        y='Peso Total Liquido',
-        color='Pesagem Saída',
-        orientation='v',
-        text='Peso Total Liquido',
-        title='Pesagem Semana',
-        barmode='group')
+    # Gráfico de volume pesado por dia
+    if not pesagem_dia.empty:
+        pesagem_dia = pesagem_dia[["Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]
+                                ].groupby(["Pesagem Saída", "Centro-Armazem"]).sum().reset_index()
+        fig_pesagem = px.bar(
+            pesagem_dia,
+            x='Centro-Armazem',
+            y='Peso Total Liquido',
+            color='Pesagem Saída',
+            orientation='v',
+            text='Peso Total Liquido',
+            title='Pesagem Semana',
+            barmode='group')
 
-    fig_pesagem.update_traces(
-        textposition='outside',
-        cliponaxis=False)
+        fig_pesagem.update_traces(
+            textposition='outside',
+            cliponaxis=False)
 
-    fig_pesagem.update_layout(yaxis_showgrid=False,
-                              xaxis_showgrid=False,
-                              xaxis_visible=True,
-                              legend_title="Data Pesagem",
-                              plot_bgcolor="rgba(0,0,0,0)")
+        fig_pesagem.update_layout(yaxis_showgrid=False,
+                                xaxis_showgrid=False,
+                                xaxis_visible=True,
+                                legend_title="Data Pesagem",
+                                plot_bgcolor="rgba(0,0,0,0)")
 
-    st.plotly_chart(fig_pesagem, use_container_width=True)
-else:
-    st.warning(
-        "Sem carregamento nesse periodo para a combinação selecionada (Cliente e Armazem)")
+        st.plotly_chart(fig_pesagem, use_container_width=True)
+    else:
+        st.warning(
+            "Sem carregamento nesse periodo para a combinação selecionada (Cliente e Armazem)")
 
-patio_externo_agrp = patio_externo[[
-    "Centro-Armazem", "Placa"]].groupby("Centro-Armazem").count().reset_index(col_level="Centro-Armazem")
-st.sidebar.caption("Veiculos Pátio Externo")
-st.sidebar.dataframe(patio_externo_agrp, hide_index=True)
+    patio_externo_agrp = patio_externo[[
+        "Centro-Armazem", "Placa"]].groupby("Centro-Armazem").count().reset_index(col_level="Centro-Armazem")
+    st.sidebar.caption("Veiculos Pátio Externo")
+    st.sidebar.dataframe(patio_externo_agrp, hide_index=True)
 
-st.table(dados_sap_filt)
+    st.table(dados_sap_filt)
+
+with tab_whatsapp:
+    st.subheader("Gerador de Mensagem")
+    st.caption("Filtre conforme Cliente e Armazem, Copie o texto abaixo e cole no WhatsApp.")
+# ====================================================================
+# LÓGICA DO RELATÓRIO PARA WHATSAPP
+# ====================================================================
+    texto_wa = "*RESUMO OPERACIONAL - PÁTIOS E EMBARQUES*\n\n"
+
+    # 1. Volume Carregado na Semana
+    texto_wa += "> 📈​ Volume carregado na semana:\n"
+    if not pesagem_dia.empty:
+        # Agrupa por data somando o peso
+        vol_por_dia = pesagem_dia.groupby("Pesagem Saída")["Peso Total Liquido"].sum()
+        for data, vol in vol_por_dia.items():
+            # Divide por 1000 se o seu dado bruto estiver em KG para exibir em Toneladas
+            texto_wa += f"* {data} = {vol} Ton\n"
+    else:
+        texto_wa += "  Sem carregamentos.\n"
+
+    # 2. Qtd Veículos Carregados
+    texto_wa += "\n> 🚚 Qtd Veículos carregados na semana:\n"
+    if not veiculos_dia.empty:
+        # Agrupa por data somando a quantidade de placas
+        qtd_por_dia = veiculos_dia.groupby("Pesagem Saída")["Placa"].sum()
+        for data, qtd in qtd_por_dia.items():
+            texto_wa += f"* {data} = {int(qtd)} veíc.\n"
+    else:
+        texto_wa += "  Nenhum veículo.\n"
+
+    # 3. Status Pátio Interno
+    texto_wa += "\n>​ 📊​ Patio interno / Etapa Pendente:\n"
+    if not patio_interno_filt.empty:
+        # Conta quantos caminhões estão em cada etapa
+        etapas_count = patio_interno_filt["Próxima Etapa"].value_counts()
+        for etapa, qtd in etapas_count.items():
+            texto_wa += f"* {etapa} = {qtd}\n"
+    else:
+        texto_wa += "  Pátio vazio ⚠️​⚠️​⚠️.\n"
+
+    # 4. Saldos de Contratos SAP
+    texto_wa += "\n> 📜 Saldos contratos:\n"
+    if not dados_sap_filt.empty:
+        # Itera linha por linha da tabela do SAP
+        for _, row in dados_sap_filt.iterrows():
+            contrato = row.get("Pedido", "-")
+            centro = str(row.get("Centro", "-")).replace(".0", "") # Limpa a formatação do centro
+            venc = row.get("Vál.até", "-")
+            vol = row.get("Qtd.Pendente", 0)
+            um = row.get("UM","-")
+            texto_wa += f"  Contrato {contrato} - Centro {centro} - Venc. {venc} - Vol: {vol:,.2f} - {um} \n"
+    else:
+        texto_wa += "  Sem saldos pendentes.\n"
+    st.code(texto_wa, language="markdown")
