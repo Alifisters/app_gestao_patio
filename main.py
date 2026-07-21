@@ -4,7 +4,7 @@ import plotly.express as px
 from gestao_patio import exe_etl_siab, calculo_media
 
 
-@st.cache_data(ttl=1200)
+@st.cache_data(ttl=3600)
 def carregar_dados_api():
     patio_interno, patio_externo, mov_ticket, his_siab, dados_sap = exe_etl_siab()
     return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap
@@ -277,36 +277,68 @@ with tab_whatsapp:
     # 1. Volume Carregado na Semana
     texto_wa += "> 📈​ Volume carregado na semana:\n"
     if not pesagem_dia.empty:
-        # Agrupa por data somando o peso
-        vol_por_dia = pesagem_dia.groupby("Pesagem Saída")["Peso Total Liquido"].sum()
-        for data, vol in vol_por_dia.items():
-            # Divide por 1000 se o seu dado bruto estiver em KG para exibir em Toneladas
-            texto_wa += f"* {data} = {vol} Ton\n"
+        # Agrupa por Centro e Data somando o peso
+        vol_centro_data = pesagem_dia.groupby(["Centro-Armazem", "Pesagem Saída"])["Peso Total Liquido"].sum().reset_index()
+        
+        # Cria uma lista apenas com os centros que tiveram carregamento
+        centros_com_volume = vol_centro_data["Centro-Armazem"].unique()
+        
+        for centro in centros_com_volume:
+            texto_wa += f"\n📍 *{centro}*\n"
+            
+            # Filtra as datas apenas desse centro específico
+            dados_do_centro = vol_centro_data[vol_centro_data["Centro-Armazem"] == centro]
+            
+            for _, row in dados_do_centro.iterrows():
+                # Formata com separador de milhar e 2 casas decimais
+                texto_wa += f"   - {row['Pesagem Saída']} = {row['Peso Total Liquido']:,.2f} Ton\n"
     else:
         texto_wa += "  Sem carregamentos.\n"
 
     # 2. Qtd Veículos Carregados
     texto_wa += "\n> 🚚 Qtd Veículos carregados na semana:\n"
     if not veiculos_dia.empty:
-        # Agrupa por data somando a quantidade de placas
-        qtd_por_dia = veiculos_dia.groupby("Pesagem Saída")["Placa"].sum()
-        for data, qtd in qtd_por_dia.items():
-            texto_wa += f"* {data} = {int(qtd)} veíc.\n"
+        # Agrupa por Centro e Data contando a quantidade de placas
+        qtd_centro_data = veiculos_dia.groupby(["Centro-Armazem", "Pesagem Saída"])["Placa"].sum().reset_index()
+        
+        # Cria uma lista apenas com os centros que tiveram veículos
+        centros_com_veiculos = qtd_centro_data["Centro-Armazem"].unique()
+        
+        for centro in centros_com_veiculos:
+            texto_wa += f"\n📍 *{centro}*\n"
+            
+            # Filtra as datas apenas desse centro específico
+            dados_do_centro = qtd_centro_data[qtd_centro_data["Centro-Armazem"] == centro]
+            
+            for _, row in dados_do_centro.iterrows():
+                texto_wa += f"   - {row['Pesagem Saída']} = {int(row['Placa'])} veíc.\n"
     else:
         texto_wa += "  Nenhum veículo.\n"
 
     # 3. Status Pátio Interno
-    texto_wa += "\n>​ 📊​ Patio interno / Etapa Pendente:\n"
+    texto_wa += "\n>​ 📊​ Patio Interno / Etapa Pendente:\n"
     if not patio_interno_filt.empty:
-        # Conta quantos caminhões estão em cada etapa
-        etapas_count = patio_interno_filt["Próxima Etapa"].value_counts()
-        for etapa, qtd in etapas_count.items():
-            texto_wa += f"* {etapa} = {qtd}\n"
+        # Agrupa por Centro e Próxima Etapa, contando as ocorrências
+        etapas_centro = patio_interno_filt.groupby(["Centro", "Próxima Etapa"]).size().reset_index(name="Qtd")
+        
+        # Cria uma lista apenas com os centros que têm caminhões no momento
+        centros_ativos = etapas_centro["Centro"].unique()
+        
+        for centro in centros_ativos:
+            # Imprime o nome do Centro em negrito
+            texto_wa += f"\n📍 *{centro}*\n"
+            
+            # Filtra as etapas apenas desse centro específico
+            dados_do_centro = etapas_centro[etapas_centro["Centro"] == centro]
+            
+            # Imprime as etapas e quantidades abaixo do centro
+            for _, row in dados_do_centro.iterrows():
+                texto_wa += f"   - {row['Próxima Etapa']} = {row['Qtd']} veíc.\n"
     else:
         texto_wa += "  Pátio vazio ⚠️​⚠️​⚠️.\n"
 
     # 4. Saldos de Contratos SAP
-    texto_wa += "\n> 📜 Saldos contratos:\n"
+    texto_wa += "\n> 📜 Saldos de Contratos:\n"
     if not dados_sap_filt.empty:
         # Itera linha por linha da tabela do SAP
         for _, row in dados_sap_filt.iterrows():
