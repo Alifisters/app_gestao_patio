@@ -338,15 +338,21 @@ with tab_whatsapp:
         texto_wa += "  Pátio vazio ⚠️​⚠️​⚠️.\n"
 
     # 4. Saldos de Contratos SAP
-    texto_wa += "\n> 📜 Saldos de Contratos:\n"
+    texto_wa += "\n> 📜 Saldos contratos:\n"
     if not dados_sap_filt.empty:
         # Itera linha por linha da tabela do SAP
         for _, row in dados_sap_filt.iterrows():
             contrato = row.get("Pedido", "-")
-            centro = str(row.get("Centro", "-")).replace(".0", "") # Limpa a formatação do centro
+            centro = str(row.get("Centro", "-")).replace(".0","")  # Limpa a formatação do centro
             venc = row.get("Vál.até", "-")
-            vol = row.get("Qtd.Pendente", 0)
-            um = row.get("UM","-")
+            um = row.get("UM", "-")
+
+            # Tenta converter o volume para número. Se for um texto não numérico ou vazio, assume 0.0
+            try:
+                vol = float(row.get("Qtd.Pendente", 0))
+            except (ValueError, TypeError):
+                vol = 0.0
+
             texto_wa += f"  Contrato {contrato} - Centro {centro} - Venc. {venc} - Vol: {vol:,.2f} - {um} \n"
     else:
         texto_wa += "  Sem saldos pendentes.\n"
