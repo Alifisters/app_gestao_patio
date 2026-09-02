@@ -24,7 +24,7 @@ st.set_page_config(layout='wide', page_icon="logo_comigo.jpg",
 lista_clientes = ["Todos"] + list(pd.concat([patio_interno["Transacionador"],
                                   his_siab["Transacionador"], mov_ticket["Transacionador"], dados_sap["Nome"]]).unique())
 ARMAZENS = ['0005-ARMAZEM SANTA HELENA',	'0012-ARMAZEM JATAI',	'0013-ARMAZEM ACREUNA',	'0017-ARMAZEM MONTIVIDIU',	'0022-ARMAZEM PARAUNA',	'0024-ARMAZEM INDIARA',	'0031-ARMAZEM ESTRELA DALVA',	'0033-ARMAZEM CINQUENTÃO',	'0034-ARMAZEM PONTE DE PEDRA',
-            '0036-ARMAZEM PARAISO',	'0042-ARMAZEM MONTES CLAROS',	'0046-ARMAZEM CAIAPONIA',	'0048-ARMAZEM BOM JARDIM',	'0052-ARMAZEM COMIGO/PAGEL',	'0053-ARMAZEM PALMEIRAS',	'0057-ARMAZEM SERRANOPOLIS',	'0062-ARMAZEM IPORA',	'0065-ARMAZEM MINEIROS']
+            '0036-ARMAZEM PARAISO',	'0042-ARMAZEM MONTES CLAROS',	'0046-ARMAZEM CAIAPONIA',	'0048-ARMAZEM BOM JARDIM',	'0052-ARMAZEM COMIGO/PAGEL',	'0053-ARMAZEM PALMEIRAS',	'0057-ARMAZEM II SERRANOPOLIS',	'0062-ARMAZEM IPORA',	'0065-ARMAZEM MINEIROS']
 TIPO_PESAGEM = ["CARGA DE PRODUTOS", "DESCARGA DE LENHA", "SIMPLES PESAGEM",
                 "DESCARGA DE GRÃOS - PRODUTOR",  "DESCARGA DE TERCEIROS", "DESCARGA DE GRÃOS - FILIAIS"]
 
@@ -264,7 +264,7 @@ with tab_graficos:
     st.sidebar.caption("Veiculos Pátio Externo")
     st.sidebar.dataframe(patio_externo_agrp, hide_index=True)
 
-    st.table(dados_sap_filt)
+    st.dataframe(dados_sap_filt)
 
 with tab_whatsapp:
     st.subheader("Gerador de Mensagem")
