@@ -264,7 +264,7 @@ with tab_graficos:
     st.sidebar.caption("Veiculos Pátio Externo")
     st.sidebar.dataframe(patio_externo_agrp, hide_index=True)
 
-    st.dataframe(dados_sap_filt)
+    st.dataframe(dados_sap_filt, hide_index=True)
 
 with tab_whatsapp:
     st.subheader("Gerador de Mensagem")
