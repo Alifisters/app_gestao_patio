@@ -279,7 +279,8 @@ with tab_whatsapp:
     if not pesagem_dia.empty:
         # Agrupa por Centro e Data somando o peso
         vol_centro_data = pesagem_dia.groupby(["Centro-Armazem", "Pesagem Saída"])["Peso Total Liquido"].sum().reset_index()
-        
+        vol_centro_data["Pesagem Saída"] = pd.to_datetime(vol_centro_data["Pesagem Saída"], format=r"%d/%m/%Y")
+        vol_centro_data = vol_centro_data.sort_values(["Centro-Armazem", "Pesagem Saída"])
         # Cria uma lista apenas com os centros que tiveram carregamento
         centros_com_volume = vol_centro_data["Centro-Armazem"].unique()
         
@@ -291,7 +292,7 @@ with tab_whatsapp:
             
             for _, row in dados_do_centro.iterrows():
                 # Formata com separador de milhar e 2 casas decimais
-                texto_wa += f"   - {row['Pesagem Saída']} = {row['Peso Total Liquido']:,.2f} Ton\n"
+                texto_wa += f"   - {row['Pesagem Saída'].strftime("%d/%m/%Y")} = {row['Peso Total Liquido']:,.2f} Ton\n"
     else:
         texto_wa += "  Sem carregamentos.\n"
 
@@ -320,7 +321,8 @@ with tab_whatsapp:
     if not patio_interno_filt.empty:
         # Agrupa por Centro e Próxima Etapa, contando as ocorrências
         etapas_centro = patio_interno_filt.groupby(["Centro", "Próxima Etapa"]).size().reset_index(name="Qtd")
-        
+        qtd_centro_data["Pesagem Saída"] = pd.to_datetime(qtd_centro_data["Pesagem Saída"], format="%d/%m/%Y")
+        qtd_centro_data = qtd_centro_data.sort_values(["Centro-Armazem", "Pesagem Saída"])
         # Cria uma lista apenas com os centros que têm caminhões no momento
         centros_ativos = etapas_centro["Centro"].unique()
         
@@ -333,7 +335,7 @@ with tab_whatsapp:
             
             # Imprime as etapas e quantidades abaixo do centro
             for _, row in dados_do_centro.iterrows():
-                texto_wa += f"   - {row['Próxima Etapa']} = {row['Qtd']} veíc.\n"
+                texto_wa += f"   - {row['Próxima Etapa'].strftime("%d/%m/%Y")} = {row['Qtd']} veíc.\n"
     else:
         texto_wa += "  Pátio vazio ⚠️​⚠️​⚠️.\n"
 
