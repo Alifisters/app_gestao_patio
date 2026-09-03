@@ -301,7 +301,8 @@ with tab_whatsapp:
     if not veiculos_dia.empty:
         # Agrupa por Centro e Data contando a quantidade de placas
         qtd_centro_data = veiculos_dia.groupby(["Centro-Armazem", "Pesagem Saída"])["Placa"].sum().reset_index()
-        
+        qtd_centro_data["Pesagem Saída"] = pd.to_datetime(qtd_centro_data["Pesagem Saída"], format="%d/%m/%Y")
+        qtd_centro_data = qtd_centro_data.sort_values(["Centro-Armazem", "Pesagem Saída"])
         # Cria uma lista apenas com os centros que tiveram veículos
         centros_com_veiculos = qtd_centro_data["Centro-Armazem"].unique()
         
@@ -312,7 +313,7 @@ with tab_whatsapp:
             dados_do_centro = qtd_centro_data[qtd_centro_data["Centro-Armazem"] == centro]
             
             for _, row in dados_do_centro.iterrows():
-                texto_wa += f"   - {row['Pesagem Saída']} = {int(row['Placa'])} veíc.\n"
+                texto_wa += f"   - {row['Pesagem Saída'].strftime("%d/%m/%Y")} = {int(row['Placa'])} veíc.\n"
     else:
         texto_wa += "  Nenhum veículo.\n"
 
@@ -321,8 +322,7 @@ with tab_whatsapp:
     if not patio_interno_filt.empty:
         # Agrupa por Centro e Próxima Etapa, contando as ocorrências
         etapas_centro = patio_interno_filt.groupby(["Centro", "Próxima Etapa"]).size().reset_index(name="Qtd")
-        qtd_centro_data["Pesagem Saída"] = pd.to_datetime(qtd_centro_data["Pesagem Saída"], format="%d/%m/%Y")
-        qtd_centro_data = qtd_centro_data.sort_values(["Centro-Armazem", "Pesagem Saída"])
+
         # Cria uma lista apenas com os centros que têm caminhões no momento
         centros_ativos = etapas_centro["Centro"].unique()
         
@@ -335,7 +335,7 @@ with tab_whatsapp:
             
             # Imprime as etapas e quantidades abaixo do centro
             for _, row in dados_do_centro.iterrows():
-                texto_wa += f"   - {row['Próxima Etapa'].strftime("%d/%m/%Y")} = {row['Qtd']} veíc.\n"
+                texto_wa += f"   - {row['Próxima Etapa']} = {row['Qtd']} veíc.\n"
     else:
         texto_wa += "  Pátio vazio ⚠️​⚠️​⚠️.\n"
 
