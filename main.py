@@ -4,14 +4,14 @@ import plotly.express as px
 from gestao_patio import exe_etl_siab, calculo_media
 
 
-@st.cache_data(ttl=3601)
+@st.cache_data(ttl=14400)
 def carregar_dados_api():
-    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap = exe_etl_siab()
-    return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap
+    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo = exe_etl_siab()
+    return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo
 
 
 with st.spinner("Conectando ao Siab e carregando dados..."):
-    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap = carregar_dados_api()
+    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo = carregar_dados_api()
 st.success("Dados atualizados com sucesso!")
 
 # Titulo do app
@@ -21,9 +21,15 @@ st.set_page_config(layout='wide', page_icon="logo_comigo.jpg",
                    page_title='Gestão de Embarques', menu_items={"About": "Autoria: ALEFF ANDRADE COSTA"})
 
 # Definindo lista de clientes e de armazens para uso no sidebar
-lista_clientes = ["Todos"] + list(pd.concat([patio_interno["Transacionador"],
-                                  his_siab["Transacionador"], mov_ticket["Transacionador"], dados_sap["Nome"]]).unique())
-ARMAZENS = ['0005-ARMAZEM SANTA HELENA',	'0012-ARMAZEM JATAI',	'0013-ARMAZEM ACREUNA',	'0017-ARMAZEM MONTIVIDIU',	'0022-ARMAZEM PARAUNA',	'0024-ARMAZEM INDIARA',	'0031-ARMAZEM ESTRELA DALVA',	'0033-ARMAZEM CINQUENTÃO',	'0034-ARMAZEM PONTE DE PEDRA',
+lista_clientes = ["Todos"] + list(pd.concat([
+    patio_interno["Transacionador"][patio_interno["TipoPesagem"]
+                                    == "CARGA DE PRODUTOS"],
+    his_siab["Transacionador"][his_siab["TipoPesagem"] == "CARGA DE PRODUTOS"],
+    mov_ticket["Transacionador"][mov_ticket["Tipo Pesagem"]
+                                 == "CARGA DE PRODUTOS"],
+    dados_sap["Nome"]
+]).unique())
+ARMAZENS = ['0002-COMPLEXO INDUSTRIAL', '0005-ARMAZEM SANTA HELENA',	'0012-ARMAZEM JATAI',	'0013-ARMAZEM ACREUNA',	'0017-ARMAZEM MONTIVIDIU',	'0022-ARMAZEM PARAUNA',	'0024-ARMAZEM INDIARA',	'0031-ARMAZEM ESTRELA DALVA',	'0033-ARMAZEM CINQUENTÃO',	'0034-ARMAZEM PONTE DE PEDRA',
             '0036-ARMAZEM PARAISO',	'0042-ARMAZEM MONTES CLAROS',	'0046-ARMAZEM CAIAPONIA',	'0048-ARMAZEM BOM JARDIM',	'0052-ARMAZEM COMIGO/PAGEL',	'0053-ARMAZEM PALMEIRAS',	'0057-ARMAZEM II SERRANOPOLIS',	'0062-ARMAZEM IPORA',	'0065-ARMAZEM MINEIROS']
 TIPO_PESAGEM = ["CARGA DE PRODUTOS", "DESCARGA DE LENHA", "SIMPLES PESAGEM",
                 "DESCARGA DE GRÃOS - PRODUTOR",  "DESCARGA DE TERCEIROS", "DESCARGA DE GRÃOS - FILIAIS"]
@@ -36,8 +42,10 @@ st.sidebar.caption("Filtre por Armazém ou Cliente")
 
 # Filtros para o Sidebar
 cliente_selecionado = st.sidebar.selectbox("Cliente:", lista_clientes)
-armazem_selecionado = st.sidebar.multiselect("Armazem", ARMAZENS)
+armazem_selecionado = st.sidebar.multiselect("Armazens:", ARMAZENS)
 tipo_pesagem_sel = st.sidebar.selectbox("Tipo de Pesagem", TIPO_PESAGEM)
+status_prazo = st.sidebar.multiselect(
+    "Status Prazo Retirada", (list(analise_prazo["Status Atraso"].unique())))
 
 # Definição de Dataframes
 patio_interno_filt = patio_interno.copy()
@@ -61,6 +69,8 @@ if cliente_selecionado != "Todos":
                                     == cliente_selecionado]
     tempos_siab = tempos_siab[tempos_siab["Transacionador"]
                               == cliente_selecionado]
+    analise_prazo = analise_prazo[analise_prazo["Nome"] == cliente_selecionado]
+
 
 if armazem_selecionado:
     patio_interno_filt = patio_interno_filt[patio_interno_filt["Centro"].isin(
@@ -72,6 +82,14 @@ if armazem_selecionado:
     patio_externo = patio_externo[patio_externo["Centro-Armazem"].isin(
         armazem_selecionado)]
     tempos_siab = tempos_siab[tempos_siab["Centro"].isin(armazem_selecionado)]
+    dados_sap_filt = dados_sap_filt[dados_sap_filt["Centro"].isin(
+        armazem_selecionado)]
+    analise_prazo = analise_prazo[analise_prazo["Centro-Armazem"].isin(
+        armazem_selecionado)]
+
+if status_prazo:
+    analise_prazo = analise_prazo[analise_prazo["Status Atraso"].isin(
+        status_prazo)]
 
 if tipo_pesagem_sel:
     patio_interno_filt = patio_interno_filt[patio_interno_filt["TipoPesagem"]
@@ -90,7 +108,8 @@ tmp_ini_carr = calculo_media(
 tmp_carreg = calculo_media(tempos_siab, 'Pesagem de Entrada', 'Pesagem Saída')
 tmp_liberacao = calculo_media(tempos_siab, 'Pesagem Saída', 'Saída Portaria')
 
-tab_graficos, tab_whatsapp = st.tabs(["📊 Painel Gerencial", "📱 Relatório WhatsApp"])
+tab_graficos, tab_whatsapp, tab_tabelas, tab_sunburst = st.tabs(
+    ["📊 Painel Gerencial", "📱 Relatório WhatsApp", "⏲️ Analise Prazo", "☀️ Gráfico Explosão Solar"])
 
 with tab_graficos:
     # Gráfico de patio externo e visuais de média de tempo
@@ -155,7 +174,6 @@ with tab_graficos:
                 <div class="valor-metrica">{tmp_liberacao}</div>
             </div>
         """, unsafe_allow_html=True)
-
 
     # Gráficos de PATIO INTERNO e VEICULOS CARREGADOS POR DIA
     with st.container():
@@ -233,7 +251,7 @@ with tab_graficos:
     # Gráfico de volume pesado por dia
     if not pesagem_dia.empty:
         pesagem_dia = pesagem_dia[["Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]
-                                ].groupby(["Pesagem Saída", "Centro-Armazem"]).sum().reset_index()
+                                  ].groupby(["Pesagem Saída", "Centro-Armazem"]).sum().reset_index()
         fig_pesagem = px.bar(
             pesagem_dia,
             x='Centro-Armazem',
@@ -249,10 +267,10 @@ with tab_graficos:
             cliponaxis=False)
 
         fig_pesagem.update_layout(yaxis_showgrid=False,
-                                xaxis_showgrid=False,
-                                xaxis_visible=True,
-                                legend_title="Data Pesagem",
-                                plot_bgcolor="rgba(0,0,0,0)")
+                                  xaxis_showgrid=False,
+                                  xaxis_visible=True,
+                                  legend_title="Data Pesagem",
+                                  plot_bgcolor="rgba(0,0,0,0)")
 
         st.plotly_chart(fig_pesagem, use_container_width=True)
     else:
@@ -263,12 +281,14 @@ with tab_graficos:
         "Centro-Armazem", "Placa"]].groupby("Centro-Armazem").count().reset_index(col_level="Centro-Armazem")
     st.sidebar.caption("Veiculos Pátio Externo")
     st.sidebar.dataframe(patio_externo_agrp, hide_index=True)
-
+    # st.sidebar.title(f"\n ANALISES DE PRAZOS:",text_alignment="center", width="content")
+    # st.sidebar.multiselect("Status Prazo", (list(analise_prazo["Status Atraso"].unique())))
     st.dataframe(dados_sap_filt, hide_index=True)
 
 with tab_whatsapp:
     st.subheader("Gerador de Mensagem")
-    st.caption("Filtre conforme Cliente e Armazem, Copie o texto abaixo e cole no WhatsApp.")
+    st.caption(
+        "Filtre conforme Cliente e Armazem, Copie o texto abaixo e cole no WhatsApp.")
 # ====================================================================
 # LÓGICA DO RELATÓRIO PARA WHATSAPP
 # ====================================================================
@@ -278,18 +298,21 @@ with tab_whatsapp:
     texto_wa += "> 📈​ Volume carregado na semana:\n"
     if not pesagem_dia.empty:
         # Agrupa por Centro e Data somando o peso
-        vol_centro_data = pesagem_dia.groupby(["Centro-Armazem", "Pesagem Saída"])["Peso Total Liquido"].sum().reset_index()
-        vol_centro_data["Pesagem Saída"] = pd.to_datetime(vol_centro_data["Pesagem Saída"], format=r"%d/%m/%Y")
-        vol_centro_data = vol_centro_data.sort_values(["Centro-Armazem", "Pesagem Saída"])
+        vol_centro_data = pesagem_dia.groupby(
+            ["Centro-Armazem", "Pesagem Saída"])["Peso Total Liquido"].sum().reset_index()
+        vol_centro_data["Pesagem Saída"] = pd.to_datetime(
+            vol_centro_data["Pesagem Saída"], format=r"%d/%m/%Y")
+        vol_centro_data = vol_centro_data.sort_values(
+            ["Centro-Armazem", "Pesagem Saída"])
         # Cria uma lista apenas com os centros que tiveram carregamento
         centros_com_volume = vol_centro_data["Centro-Armazem"].unique()
-        
+
         for centro in centros_com_volume:
             texto_wa += f"\n📍 *{centro}*\n"
-            
+
             # Filtra as datas apenas desse centro específico
             dados_do_centro = vol_centro_data[vol_centro_data["Centro-Armazem"] == centro]
-            
+
             for _, row in dados_do_centro.iterrows():
                 # Formata com separador de milhar e 2 casas decimais
                 texto_wa += f"   - {row['Pesagem Saída'].strftime("%d/%m/%Y")} = {row['Peso Total Liquido']:,.2f} Ton\n"
@@ -300,18 +323,21 @@ with tab_whatsapp:
     texto_wa += "\n> 🚚 Qtd Veículos carregados na semana:\n"
     if not veiculos_dia.empty:
         # Agrupa por Centro e Data contando a quantidade de placas
-        qtd_centro_data = veiculos_dia.groupby(["Centro-Armazem", "Pesagem Saída"])["Placa"].sum().reset_index()
-        qtd_centro_data["Pesagem Saída"] = pd.to_datetime(qtd_centro_data["Pesagem Saída"], format="%d/%m/%Y")
-        qtd_centro_data = qtd_centro_data.sort_values(["Centro-Armazem", "Pesagem Saída"])
+        qtd_centro_data = veiculos_dia.groupby(
+            ["Centro-Armazem", "Pesagem Saída"])["Placa"].sum().reset_index()
+        qtd_centro_data["Pesagem Saída"] = pd.to_datetime(
+            qtd_centro_data["Pesagem Saída"], format="%d/%m/%Y")
+        qtd_centro_data = qtd_centro_data.sort_values(
+            ["Centro-Armazem", "Pesagem Saída"])
         # Cria uma lista apenas com os centros que tiveram veículos
         centros_com_veiculos = qtd_centro_data["Centro-Armazem"].unique()
-        
+
         for centro in centros_com_veiculos:
             texto_wa += f"\n📍 *{centro}*\n"
-            
+
             # Filtra as datas apenas desse centro específico
             dados_do_centro = qtd_centro_data[qtd_centro_data["Centro-Armazem"] == centro]
-            
+
             for _, row in dados_do_centro.iterrows():
                 texto_wa += f"   - {row['Pesagem Saída'].strftime("%d/%m/%Y")} = {int(row['Placa'])} veíc.\n"
     else:
@@ -321,18 +347,19 @@ with tab_whatsapp:
     texto_wa += "\n>​ 📊​ Patio Interno / Etapa Pendente:\n"
     if not patio_interno_filt.empty:
         # Agrupa por Centro e Próxima Etapa, contando as ocorrências
-        etapas_centro = patio_interno_filt.groupby(["Centro", "Próxima Etapa"]).size().reset_index(name="Qtd")
+        etapas_centro = patio_interno_filt.groupby(
+            ["Centro", "Próxima Etapa"]).size().reset_index(name="Qtd")
 
         # Cria uma lista apenas com os centros que têm caminhões no momento
         centros_ativos = etapas_centro["Centro"].unique()
-        
+
         for centro in centros_ativos:
             # Imprime o nome do Centro em negrito
             texto_wa += f"\n📍 *{centro}*\n"
-            
+
             # Filtra as etapas apenas desse centro específico
             dados_do_centro = etapas_centro[etapas_centro["Centro"] == centro]
-            
+
             # Imprime as etapas e quantidades abaixo do centro
             for _, row in dados_do_centro.iterrows():
                 texto_wa += f"   - {row['Próxima Etapa']} = {row['Qtd']} veíc.\n"
@@ -345,7 +372,8 @@ with tab_whatsapp:
         # Itera linha por linha da tabela do SAP
         for _, row in dados_sap_filt.iterrows():
             contrato = row.get("Pedido", "-")
-            centro = str(row.get("Centro", "-")).replace(".0","")  # Limpa a formatação do centro
+            centro = str(row.get("Centro", "-")).replace(".0",
+                                                         "")  # Limpa a formatação do centro
             venc = row.get("Vál.até", "-")
             um = row.get("UM", "-")
 
@@ -359,3 +387,32 @@ with tab_whatsapp:
     else:
         texto_wa += "  Sem saldos pendentes.\n"
     st.code(texto_wa, language="markdown")
+
+with tab_tabelas:
+    st.dataframe(analise_prazo, hide_index=True)
+
+    analise_prazo_agrp_cliente = (analise_prazo[["Nome", "Vál.até", "Centro-Armazem", "Qtd.Pendente",
+                                  "Status Atraso"]].groupby(["Nome", "Status Atraso", "Vál.até", "Centro-Armazem"]).sum())
+    analise_prazo_agrp_centro = (analise_prazo[["Nome", "Vál.até", "Centro-Armazem", "Qtd.Pendente",
+                                 "Status Atraso"]].groupby(["Centro-Armazem", "Status Atraso", "Vál.até", "Nome"]).sum())
+
+    st.markdown(analise_prazo_agrp_cliente.to_html(), unsafe_allow_html=True)
+
+with tab_sunburst:
+    col_sunburst_cliente, col_sunburst_centro = st.columns(2)
+    with col_sunburst_cliente:
+        if not analise_prazo_agrp_cliente.empty:
+            fig_sunburst_cliente = px.sunburst(analise_prazo_agrp_cliente.reset_index(), path=[
+                                               "Nome", "Status Atraso", "Vál.até", "Centro-Armazem"], values="Qtd.Pendente", color="Qtd.Pendente", color_continuous_scale="aggrnyl_r", title="Distribuição por Status de Vencimento (Cliente)")
+            st.plotly_chart(fig_sunburst_cliente, use_container_width=True)
+        else:
+            st.warning(
+                "Nenhum dados disponivel para essa combinação de filtros")
+    with col_sunburst_centro:
+        if not analise_prazo_agrp_centro.empty:
+            fig_sunburst_centro = px.sunburst(analise_prazo_agrp_centro.reset_index(), path=[
+                                              "Centro-Armazem", "Status Atraso", "Vál.até", "Nome"], values="Qtd.Pendente", color="Qtd.Pendente", color_continuous_scale="aggrnyl_r", title="Distribuição por Status de Vencimento (Centro)")
+            st.plotly_chart(fig_sunburst_centro, use_container_width=True,)
+        else:
+            st.warning(
+                "Nenhum dados disponivel para essa combinação de filtros")

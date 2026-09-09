@@ -29,8 +29,8 @@ def exe_etl_siab():
     API_RELATORIO = f"{BASE_URL}/Administrativo/SIAB/GetRelatorioRP"
     API_SIAB = f'{BASE_URL}/Administrativo/SIAB/GetRelatorioPatio'
     URL_SIAB_MOV = f"{BASE_URL}/Administrativo/SIAB/RelatorioMovimentacoes"
-    dados_sap=pd.read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQKckvCwnh8plPAJi8XIr6u63bAq3PVtCkYjyjtdgYGiDs7L6DT1Y9BSqjNGSE6ElktQCMJUxXfpb5z/pub?gid=1602540452&single=true&output=csv")
-
+    dados_sap = pd.read_csv(
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQKckvCwnh8plPAJi8XIr6u63bAq3PVtCkYjyjtdgYGiDs7L6DT1Y9BSqjNGSE6ElktQCMJUxXfpb5z/pub?gid=1602540452&single=true&output=csv")
 
     CENTROS_ARMAZENS = [
         "0005", "0012", "0013", "0017", "0022", "0024", "0031", "0033",
@@ -345,7 +345,109 @@ def exe_etl_siab():
     for coluna in metrica_tmp:
         tabela_final[coluna] = tabela_final[coluna].apply(
             lambda x: f"{int(x.total_seconds()) // 3600:02}:{int(x.total_seconds()) % 3600 // 60:02}:{int(x.total_seconds()) % 60:02}" if pd.notna(x) else None)
-    return tabela_final_aberto, patio_externo, df_movimentos, tabela_final, dados_sap
+
+    saldos_prazo = dados_sap[['Material', 'Docto.', 'Pedido',
+                              'Vál.até', 'Nome', 'Centro', 'UM', 'Qtd.Pendente']]
+
+    centros_armazens_siab = {
+        2: "0002-COMPLEXO INDUSTRIAL",
+        5: '0005-ARMAZEM SANTA HELENA',
+        12: '0012-ARMAZEM JATAI',
+        13: '0013-ARMAZEM ACREUNA',
+        17: '0017-ARMAZEM MONTIVIDIU',
+        22: '0022-ARMAZEM PARAUNA',
+        24: '0024-ARMAZEM INDIARA',
+        31: '0031-ARMAZEM ESTRELA DALVA',
+        33: '0033-ARMAZEM CINQUENTÃO',
+        34: '0034-ARMAZEM PONTE DE PEDRA',
+        36: '0036-ARMAZEM PARAISO',
+        42: '0042-ARMAZEM MONTES CLAROS',
+        46: '0046-ARMAZEM CAIAPONIA',
+        48: '0048-ARMAZEM BOM JARDIM',
+        52: '0052-ARMAZEM COMIGO/PAGEL',
+        53: '0053-ARMAZEM PALMEIRAS',
+        57: '0057-ARMAZEM II SERRANOPOLIS',
+        62: '0062-ARMAZEM IPORA',
+        65: '0065-ARMAZEM MINEIROS'}
+    # ==============================================================================================
+    # ADICIONANDO CENTROS-ARMAZENS NO RELATÓRIO DE SALDOS DO SAP E MANTENDO O NOME PARA FILTRAR NO PAINEL WHATSAPP
+    dados_sap["Centro"] = dados_sap["Centro"].map(centros_armazens_siab)
+    # ==============================================================================================
+
+    # ==============================================================================================
+    # ADICIONA OS NOMES CORRETOS DE CENTRO CONFORME SIAB E CONVERTE TUDO PARA UM DE KG
+    saldos_prazo["Centro-Armazem"] = saldos_prazo["Centro"].map(
+        centros_armazens_siab)
+    if pd.api.types.is_object_dtype(saldos_prazo["Qtd.Pendente"]) or pd.api.types.is_string_dtype(saldos_prazo["Qtd.Pendente"]):
+        saldos_prazo["Qtd.Pendente"] = saldos_prazo["Qtd.Pendente"].str.replace(
+            ",", ".")
+        saldos_prazo["Qtd.Pendente"] = saldos_prazo["Qtd.Pendente"].astype(
+            "float")
+    else:
+        saldos_prazo["Qtd.Pendente"] = saldos_prazo["Qtd.Pendente"].astype(
+            "float")
+    saldos_prazo["Qtd.Pendente"] = [saldo * 1000 if um == "TON" else saldo for saldo,
+                                    um in zip(saldos_prazo["Qtd.Pendente"], saldos_prazo["UM"])]
+    # ==============================================================================================
+
+    # ==============================================================================================
+    # CRIA A TABELA DE DESEMPENHO E FAZ A MÉDIA PELO NUMERO DE OCORRENCIAS
+    med_desempenho = df_movimentos[[
+        "Transacionador", "Centro-Armazem", "Pesagem Saída", "Peso Total Liquido"]]
+    med_desempenho = med_desempenho.groupby(["Transacionador", "Centro-Armazem"]).agg(Volume=(
+        "Peso Total Liquido", "sum"), Dias_carregados=("Pesagem Saída", "nunique")).reset_index()
+    med_desempenho["Media_carreg"] = (
+        (med_desempenho["Volume"] / med_desempenho["Dias_carregados"]) * 1000).round(2)
+    med_desempenho = med_desempenho.drop(columns=["Volume", "Dias_carregados"])
+    # ==============================================================================================
+
+    # ==============================================================================================
+    # UNE AS INFORMAÇÕES DE SALDO E PRAZO COM A MEDIA DE CARREGAMENTO PARA ANALISE
+    analise_prazo = saldos_prazo.merge(med_desempenho, how="left", left_on=[
+                                       "Nome", "Centro-Armazem"], right_on=["Transacionador", "Centro-Armazem"])
+    analise_prazo["Vál.até"] = pd.to_datetime(
+        analise_prazo["Vál.até"], dayfirst=True)
+    analise_prazo["Qtd.Pendente"] = analise_prazo["Qtd.Pendente"].astype(
+        "float64")
+    analise_prazo["estimativa_dias"] = (
+        analise_prazo["Qtd.Pendente"] / analise_prazo["Media_carreg"]).round(1)
+    analise_prazo[["estimativa_dias", "Media_carreg"]] = analise_prazo[[
+        "estimativa_dias", "Media_carreg"]].fillna(0)
+    analise_prazo["Vencimento em:"] = analise_prazo["Vál.até"] - \
+        pd.to_datetime(date.today())
+    analise_prazo["vencimento_dias"] = ((analise_prazo["Vál.até"] - pd.to_datetime(
+        date.today())).dt.total_seconds().astype("int")/84600).round(1)
+    # ==============================================================================================
+
+    # ==============================================================================================
+    # DEFINIÇÃO COM BASE NO DESEMPENHO DE CARREGAMENTO DOS ULTIMOS DIAS SE HÁ RISCO DE ATRASAR
+    status_prazo = []
+    for index, linha in analise_prazo[["vencimento_dias", "estimativa_dias"]].iterrows():
+        estimativa_dias = linha["estimativa_dias"]
+        vencimento_dias = linha["vencimento_dias"]
+
+        if estimativa_dias > vencimento_dias and vencimento_dias >= 0:
+            status_prazo.append("Risco de Atraso")
+        elif estimativa_dias <= vencimento_dias and vencimento_dias >= 0:
+            status_prazo.append("Sem Risco Evidente de Atraso")
+        elif estimativa_dias > vencimento_dias and vencimento_dias < 0:
+            status_prazo.append("Contrato Atrasado")
+        else:
+            status_prazo.append("Erro na dedução")
+
+    analise_prazo["Status Atraso"] = status_prazo
+    # ==============================================================================================
+
+    # ==============================================================================================
+    # REMOÇÃO DE COLUNAS DESNECESSÁRIAS PARA REALIZAR O GROUPBY E AJUSTANDO FORMATO DE DATAS
+    analise_prazo["Estimativa Finalização(Dias):"] = analise_prazo["estimativa_dias"]
+    analise_prazo = analise_prazo.drop(columns=[
+                                       "Centro", "Transacionador", "estimativa_dias", "Media_carreg", "vencimento_dias"])
+    analise_prazo["Vál.até"] = analise_prazo["Vál.até"].dt.strftime(
+        date_format=r"%d/%m/%Y")
+    # ==============================================================================================
+
+    return tabela_final_aberto, patio_externo, df_movimentos, tabela_final, dados_sap, analise_prazo
 
 
 def calculo_media(df, nome_col1: str, nome_col2: str):
