@@ -17,9 +17,8 @@ def exe_etl_siab():
     # ==========================================
     # 1. CONFIGURAÇÕES E CREDENCIAIS
     # ==========================================
-    CPF_USUARIO = os.getenv("CPF_USUARIO")
-    SENHA_BS = os.getenv("SENHA_BS")
-
+    CPF_USUARIO = 70634444174
+    SENHA_BS = 25654789
     # URLs da API
     BASE_URL = "https://business.comigo.com.br:45004"
     WS_BUSINESS_URL = "https://servicesbusiness.comigo.com.br:45004/wsBusiness"
@@ -440,7 +439,7 @@ def exe_etl_siab():
 
     # ==============================================================================================
     # REMOÇÃO DE COLUNAS DESNECESSÁRIAS PARA REALIZAR O GROUPBY E AJUSTANDO FORMATO DE DATAS
-    analise_prazo["Estimativa Finalização(Dias):"] = analise_prazo["estimativa_dias"]
+    analise_prazo["Estimativa Finalização (Dias):"] = analise_prazo["estimativa_dias"]
     analise_prazo = analise_prazo.drop(columns=[
                                        "Centro", "Transacionador", "estimativa_dias", "Media_carreg", "vencimento_dias"])
     analise_prazo["Vál.até"] = analise_prazo["Vál.até"].dt.strftime(
