@@ -371,6 +371,7 @@ def exe_etl_siab():
     # ==============================================================================================
     # ADICIONANDO CENTROS-ARMAZENS NO RELATÓRIO DE SALDOS DO SAP E MANTENDO O NOME PARA FILTRAR NO PAINEL WHATSAPP
     dados_sap["Centro"] = dados_sap["Centro"].map(centros_armazens_siab)
+    dados_sap["Qtd.Pendente"] = dados_sap["Qtd.Pendente"].str.replace(",",".")
     # ==============================================================================================
 
     # ==============================================================================================
