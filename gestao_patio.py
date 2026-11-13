@@ -9,7 +9,7 @@ def exe_etl_siab():
     """
     import json
     import re
-    from datetime import timedelta, time, date, datetime
+    from datetime import timedelta, time, date, datetime, timezone
 
     import requests
     import pandas as pd
@@ -447,7 +447,7 @@ def exe_etl_siab():
         date_format=r"%d/%m/%Y")
     # ==============================================================================================
 
-    ultm_atualizacao = datetime.now().strftime(r"%d/%m/%Y %H:%M")
+    ultm_atualizacao = datetime.now(timezone(timedelta(hours=-3))).strftime(r"%d/%m/%Y %H:%M")
     return tabela_final_aberto, patio_externo, df_movimentos, tabela_final, dados_sap, analise_prazo, ultm_atualizacao
 
 
