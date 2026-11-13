@@ -294,14 +294,15 @@ with tab_whatsapp:
     # 1. Volume Carregado na Semana
     if not relatorio_wa.empty:
         resumo_relatorio_wa = relatorio_wa.groupby(["Centro-Armazem","Produto","Pesagem Saída"]).agg({'Peso Total Liquido':'sum','Placa':'count'}).reset_index()
-        texto_wa = f"*RESUMO OPERACIONAL -  PÁTIOS E EMBARQUES*\n"
+        texto_wa = f"*RESUMO OPERACIONAL -  PÁTIOS E EMBARQUES*\n\n"
+        texto_wa += f"> 📈 Volume Carregado na semana:\n"
         centros_c_dados = resumo_relatorio_wa["Centro-Armazem"].unique()
         for centro in centros_c_dados:
             texto_wa += f"*📍 {centro}* \n\n"
             dados_centro = resumo_relatorio_wa[resumo_relatorio_wa["Centro-Armazem"]==centro]
             produtos_no_centro = dados_centro["Produto"].unique()
             for produto in produtos_no_centro:
-                texto_wa += f"  `{produto}`\n"
+                texto_wa += f"       `{produto}`\n"
                 dados_centro = dados_centro[dados_centro["Produto"]==produto]
                 for indice, registro in dados_centro.iterrows():
                     texto_wa += f"* {registro["Pesagem Saída"]} - {registro["Peso Total Liquido"]:,.2f} Ton - {registro["Placa"]} Veic.\n"
@@ -328,7 +329,7 @@ with tab_whatsapp:
             for _, row in dados_do_centro.iterrows():
                 texto_wa += f"   - {row['Próxima Etapa']} = {row['Qtd']} veíc.\n"
     else:
-        texto_wa += "  `Pátio vazio ⚠️​⚠️​⚠️`\n"
+        texto_wa += "    Pátio vazio ⚠️​⚠️​⚠️\n"
 
     # 4. Saldos de Contratos SAP
     texto_wa += "\n> 📜 Saldos contratos:\n"
