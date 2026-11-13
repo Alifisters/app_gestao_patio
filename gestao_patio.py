@@ -17,8 +17,8 @@ def exe_etl_siab():
     # ==========================================
     # 1. CONFIGURAÇÕES E CREDENCIAIS
     # ==========================================
-    CPF_USUARIO = 70634444174
-    SENHA_BS = 25654789
+    CPF_USUARIO = os.getenv("CPF_USUARIO")
+    SENHA_BS = os.getenv("SENHA_BS")
     # URLs da API
     BASE_URL = "https://business.comigo.com.br:45004"
     WS_BUSINESS_URL = "https://servicesbusiness.comigo.com.br:45004/wsBusiness"
