@@ -295,7 +295,7 @@ with tab_whatsapp:
     if not relatorio_wa.empty:
         resumo_relatorio_wa = relatorio_wa.groupby(["Centro-Armazem","Produto","Pesagem Saída"]).agg({'Peso Total Liquido':'sum','Placa':'count'}).reset_index()
         texto_wa = f"*RESUMO OPERACIONAL -  PÁTIOS E EMBARQUES*\n\n"
-        texto_wa += f"> 📈 Volume Carregado na semana:\n"
+        texto_wa += f"> 📈 Volume Carregado na semana:\n\n"
         centros_c_dados = resumo_relatorio_wa["Centro-Armazem"].unique()
         for centro in centros_c_dados:
             texto_wa += f"*📍 {centro}* \n\n"
