@@ -17,8 +17,8 @@ def exe_etl_siab():
     # ==========================================
     # 1. CONFIGURAÇÕES E CREDENCIAIS
     # ==========================================
-    CPF_USUARIO = os.getenv("CPF_USUARIO")
-    SENHA_BS = os.getenv("SENHA_BS")
+    CPF_USUARIO = 70634444174
+    SENHA_BS = 25654789
     # URLs da API
     BASE_URL = "https://business.comigo.com.br:45004"
     WS_BUSINESS_URL = "https://servicesbusiness.comigo.com.br:45004/wsBusiness"
@@ -357,7 +357,7 @@ def exe_etl_siab():
         22: '0022-ARMAZEM PARAUNA',
         24: '0024-ARMAZEM INDIARA',
         31: '0031-ARMAZEM ESTRELA DALVA',
-        33: '0033-ARMAZEM CINQUENTÃO',
+        33: '0033-ARMAZEM CINQUENTAO',
         34: '0034-ARMAZEM PONTE DE PEDRA',
         36: '0036-ARMAZEM PARAISO',
         42: '0042-ARMAZEM MONTES CLAROS',
@@ -447,7 +447,8 @@ def exe_etl_siab():
         date_format=r"%d/%m/%Y")
     # ==============================================================================================
 
-    return tabela_final_aberto, patio_externo, df_movimentos, tabela_final, dados_sap, analise_prazo
+    ultm_atualizacao = datetime.now().strftime(r"%d/%m/%Y %H:%M")
+    return tabela_final_aberto, patio_externo, df_movimentos, tabela_final, dados_sap, analise_prazo, ultm_atualizacao
 
 
 def calculo_media(df, nome_col1: str, nome_col2: str):

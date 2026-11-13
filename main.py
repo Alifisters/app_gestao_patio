@@ -1,18 +1,20 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime import datetime
 from gestao_patio import exe_etl_siab, calculo_media
 
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=180000)
 def carregar_dados_api():
-    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo = exe_etl_siab()
-    return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo
+    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo, ultm_atualizacao = exe_etl_siab()
+    return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo, ultm_atualizacao
 
 
 with st.spinner("Conectando ao Siab e carregando dados..."):
-    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo = carregar_dados_api()
-st.success("Dados atualizados com sucesso!")
+    patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo, ultm_atualizacao = carregar_dados_api()
+st.success(
+    icon="✅", body=f"Dados atualizados com sucesso! \nUltima atualização {ultm_atualizacao}")
 
 # Titulo do app
 st.title("Painel de Pátios e Embarques", text_alignment="center")
@@ -29,7 +31,7 @@ lista_clientes = ["Todos"] + list(pd.concat([
                                  == "CARGA DE PRODUTOS"],
     dados_sap["Nome"]
 ]).unique())
-ARMAZENS = ['0002-COMPLEXO INDUSTRIAL', '0005-ARMAZEM SANTA HELENA',	'0012-ARMAZEM JATAI',	'0013-ARMAZEM ACREUNA',	'0017-ARMAZEM MONTIVIDIU',	'0022-ARMAZEM PARAUNA',	'0024-ARMAZEM INDIARA',	'0031-ARMAZEM ESTRELA DALVA',	'0033-ARMAZEM CINQUENTÃO',	'0034-ARMAZEM PONTE DE PEDRA',
+ARMAZENS = ['0002-COMPLEXO INDUSTRIAL', '0005-ARMAZEM SANTA HELENA',	'0012-ARMAZEM JATAI',	'0013-ARMAZEM ACREUNA',	'0017-ARMAZEM MONTIVIDIU',	'0022-ARMAZEM PARAUNA',	'0024-ARMAZEM INDIARA',	'0031-ARMAZEM ESTRELA DALVA',	'0033-ARMAZEM CINQUENTAO',	'0034-ARMAZEM PONTE DE PEDRA',
             '0036-ARMAZEM PARAISO',	'0042-ARMAZEM MONTES CLAROS',	'0046-ARMAZEM CAIAPONIA',	'0048-ARMAZEM BOM JARDIM',	'0052-ARMAZEM COMIGO/PAGEL',	'0053-ARMAZEM PALMEIRAS',	'0057-ARMAZEM II SERRANOPOLIS',	'0062-ARMAZEM IPORA',	'0065-ARMAZEM MINEIROS']
 TIPO_PESAGEM = ["CARGA DE PRODUTOS", "DESCARGA DE LENHA", "SIMPLES PESAGEM",
                 "DESCARGA DE GRÃOS - PRODUTOR",  "DESCARGA DE TERCEIROS", "DESCARGA DE GRÃOS - FILIAIS"]
@@ -46,16 +48,16 @@ armazem_selecionado = st.sidebar.multiselect("Armazens:", ARMAZENS)
 tipo_pesagem_sel = st.sidebar.selectbox("Tipo de Pesagem", TIPO_PESAGEM)
 status_prazo = st.sidebar.multiselect(
     "Status Prazo Retirada", (list(analise_prazo["Status Atraso"].unique())))
+produto_sel = st.sidebar.multiselect(label="Produto(s):",options=(list(his_siab["Produto"].unique())))
 
 # Definição de Dataframes
 patio_interno_filt = patio_interno.copy()
-pesagem_dia = mov_ticket[["Placa", "Transacionador", "Produto", "Tipo Pesagem",
-                          "Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]].copy().dropna(subset="Pesagem Saída")
-veiculos_dia = pesagem_dia.copy()
+pesagem_dia = mov_ticket[["Placa", "Transacionador", "Produto", "Tipo Pesagem","Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]].copy().dropna(subset="Pesagem Saída")
+veiculos_dia = pesagem_dia.copy().sort_values("Pesagem Saída")
 dados_sap_filt = dados_sap[['Material', 'Docto.', 'Pedido',
                             'Vál.até', 'Cidade', 'Nome', 'Centro', 'UM', 'Qtd.Pendente']]
 tempos_siab = his_siab
-
+relatorio_wa = mov_ticket
 
 # Condições utilizando filtros definidos
 if cliente_selecionado != "Todos":
@@ -70,7 +72,7 @@ if cliente_selecionado != "Todos":
     tempos_siab = tempos_siab[tempos_siab["Transacionador"]
                               == cliente_selecionado]
     analise_prazo = analise_prazo[analise_prazo["Nome"] == cliente_selecionado]
-
+    relatorio_wa = relatorio_wa[relatorio_wa["Transacionador"]==cliente_selecionado]
 
 if armazem_selecionado:
     patio_interno_filt = patio_interno_filt[patio_interno_filt["Centro"].isin(
@@ -86,6 +88,7 @@ if armazem_selecionado:
         armazem_selecionado)]
     analise_prazo = analise_prazo[analise_prazo["Centro-Armazem"].isin(
         armazem_selecionado)]
+    relatorio_wa = relatorio_wa[relatorio_wa["Centro-Armazem"].isin(armazem_selecionado)]
 
 if status_prazo:
     analise_prazo = analise_prazo[analise_prazo["Status Atraso"].isin(
@@ -100,6 +103,7 @@ if tipo_pesagem_sel:
     patio_externo = patio_externo[patio_externo["TipoPesagem"]
                                   == tipo_pesagem_sel]
     tempos_siab = tempos_siab[tempos_siab["TipoPesagem"] == tipo_pesagem_sel]
+    relatorio_wa = relatorio_wa[relatorio_wa["Tipo Pesagem"]==tipo_pesagem_sel]
 
 tmp_entrada = calculo_media(
     tempos_siab, 'Check-in Portaria', 'Entrada Portaria')
@@ -181,35 +185,28 @@ with tab_graficos:
         with col_patio_int:
             if not patio_interno_filt.empty:  # Gráfico Patio interno
                 patio_interno_agrp = patio_interno_filt.groupby(
-                    ['Próxima Etapa', 'Centro']).size().reset_index(name="Qtd Veiculos")
+                    ['Produto','Centro','Próxima Etapa']).size().reset_index(name="Qtd Veiculos")
 
                 fig = px.bar(
                     patio_interno_agrp,
-                    # Eixo Y = Etapa (Fica na vertical do gráfico horizontal)
-                    x='Centro',
-                    y='Qtd Veiculos',             # Eixo X = Quantidade
-                    color='Próxima Etapa',              # Cada armazém terá uma cor diferente
-                    orientation='v',              # Transforma a barra em Horizontal
+                    x="Centro",
+                    y="Qtd Veiculos",
+                    color="Próxima Etapa",
+                    barmode="group",
+                    title="N° Veiculos / Produto / Centro / Etapa Pendente",
+                    facet_col="Produto",
+                    orientation="v",
                     text="Qtd Veiculos",
-                    title="Qtd Veículos/Etapa Pendente/Armazém",
-                    # 'group' deixa as barras lado a lado, mude para 'stack' para empilhar
-                    barmode='stack'
-                )
-
-            # Customizações visuais solicitadas: posicionar número acima e remover as linhas
-                fig.update_traces(
-                    textposition='outside',       # Força o número a ficar ACIMA da coluna vertical
-                    cliponaxis=False              # Evita que números altos sumam no topo do gráfico
-                )
-
-                fig.update_layout(
-                    yaxis_showgrid=False,
+                    labels={"Produto,Centro":"Produto / Centro"}
+                ).update_traces(
+                    textposition='outside',
+                    cliponaxis=False,
+                ).update_layout(
                     xaxis_showgrid=False,
-                    yaxis_visible=False,
-                    xaxis_title="Centro-Armazem",
-                    legend_title="Etapas da Operação",
-                    plot_bgcolor='rgba(0,0,0,0)'
-                )
+                    yaxis_visible=True,
+                    legend_title="Etapa Pendente",
+                ).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1])
+                ).update_xaxes(title_text="")
 
                 # Renderiza o gráfico na tela
                 st.plotly_chart(fig, use_container_width=True)
@@ -219,30 +216,31 @@ with tab_graficos:
 
         with col_qtd_dia:
             if not veiculos_dia.empty:  # Gráfico Qtd Veiculos por dia
-                veiculos_dia = veiculos_dia[["Pesagem Saída", "Centro-Armazem", "Placa"]].groupby(
-                    ["Pesagem Saída", "Centro-Armazem"]).count().reset_index()
+                veiculos_dia = veiculos_dia[["Produto","Pesagem Saída", "Centro-Armazem", "Placa"]].groupby(
+                    ["Produto","Pesagem Saída", "Centro-Armazem"]).count().reset_index().sort_values(["Pesagem Saída"])
                 fig_qtd_dia = px.bar(
                     veiculos_dia,
                     x="Centro-Armazem",
                     y="Placa",
                     color="Pesagem Saída",
                     text="Placa",
-                    title="Qtd Veiculos Pesados",
+                    title="Qtd Veiculos Pesados / Produto / Centro / Data",
                     barmode='group',
+                    facet_col="Produto",
                     orientation="v",
                     labels={'Placa': 'N° Veiculos'}
-                )
-                fig_qtd_dia.update_traces(
+                ).update_traces(
                     textposition="outside",
                     cliponaxis=False
-                )
-                fig_qtd_dia.update_layout(
-                    yaxis_showgrid=False,
+                ).update_layout(
+                    yaxis_showgrid=True,
                     xaxis_showgrid=False,
                     xaxis_visible=True,
                     legend_title="Data Pesagem",
                     plot_bgcolor="rgba(0,0,0,0)"
-                )
+                ).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1])
+                ).update_xaxes(title_text="")
+
                 st.plotly_chart(fig_qtd_dia, use_container_width=True)
             else:
                 st.warning(
@@ -250,27 +248,28 @@ with tab_graficos:
 
     # Gráfico de volume pesado por dia
     if not pesagem_dia.empty:
-        pesagem_dia = pesagem_dia[["Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]
-                                  ].groupby(["Pesagem Saída", "Centro-Armazem"]).sum().reset_index()
+        pesagem_dia = pesagem_dia[["Produto","Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]
+                                  ].groupby(["Produto","Pesagem Saída", "Centro-Armazem"]).sum().reset_index()
         fig_pesagem = px.bar(
             pesagem_dia,
             x='Centro-Armazem',
             y='Peso Total Liquido',
             color='Pesagem Saída',
             orientation='v',
+            facet_col="Produto",
             text='Peso Total Liquido',
             title='Pesagem Semana',
-            barmode='group')
-
-        fig_pesagem.update_traces(
+            barmode='group'
+        ).update_traces(
             textposition='outside',
-            cliponaxis=False)
-
-        fig_pesagem.update_layout(yaxis_showgrid=False,
-                                  xaxis_showgrid=False,
-                                  xaxis_visible=True,
-                                  legend_title="Data Pesagem",
-                                  plot_bgcolor="rgba(0,0,0,0)")
+            cliponaxis=False
+        ).update_layout(yaxis_showgrid=True,
+            xaxis_showgrid=False,
+            xaxis_visible=True,
+            legend_title="Data Pesagem",
+            plot_bgcolor="rgba(0,0,0,0)"
+        ).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1])
+        ).update_xaxes(title_text="")
 
         st.plotly_chart(fig_pesagem, use_container_width=True)
     else:
@@ -281,8 +280,6 @@ with tab_graficos:
         "Centro-Armazem", "Placa"]].groupby("Centro-Armazem").count().reset_index(col_level="Centro-Armazem")
     st.sidebar.caption("Veiculos Pátio Externo")
     st.sidebar.dataframe(patio_externo_agrp, hide_index=True)
-    # st.sidebar.title(f"\n ANALISES DE PRAZOS:",text_alignment="center", width="content")
-    # st.sidebar.multiselect("Status Prazo", (list(analise_prazo["Status Atraso"].unique())))
     st.dataframe(dados_sap_filt, hide_index=True)
 
 with tab_whatsapp:
@@ -290,61 +287,28 @@ with tab_whatsapp:
     st.caption(
         "Filtre conforme Cliente e Armazem, Copie o texto abaixo e cole no WhatsApp.")
 # ====================================================================
-# LÓGICA DO RELATÓRIO PARA WHATSAPP
+# RELATÓRIO PARA WHATSAPP
 # ====================================================================
     texto_wa = "*RESUMO OPERACIONAL - PÁTIOS E EMBARQUES*\n\n"
 
     # 1. Volume Carregado na Semana
-    texto_wa += "> 📈​ Volume carregado na semana:\n"
-    if not pesagem_dia.empty:
-        # Agrupa por Centro e Data somando o peso
-        vol_centro_data = pesagem_dia.groupby(
-            ["Centro-Armazem", "Pesagem Saída"])["Peso Total Liquido"].sum().reset_index()
-        vol_centro_data["Pesagem Saída"] = pd.to_datetime(
-            vol_centro_data["Pesagem Saída"], format=r"%d/%m/%Y")
-        vol_centro_data = vol_centro_data.sort_values(
-            ["Centro-Armazem", "Pesagem Saída"])
-        # Cria uma lista apenas com os centros que tiveram carregamento
-        centros_com_volume = vol_centro_data["Centro-Armazem"].unique()
-
-        for centro in centros_com_volume:
-            texto_wa += f"\n📍 *{centro}*\n"
-
-            # Filtra as datas apenas desse centro específico
-            dados_do_centro = vol_centro_data[vol_centro_data["Centro-Armazem"] == centro]
-
-            for _, row in dados_do_centro.iterrows():
-                # Formata com separador de milhar e 2 casas decimais
-                texto_wa += f"   - {row['Pesagem Saída'].strftime("%d/%m/%Y")} = {row['Peso Total Liquido']:,.2f} Ton\n"
-    else:
-        texto_wa += "  Sem carregamentos.\n"
-
-    # 2. Qtd Veículos Carregados
-    texto_wa += "\n> 🚚 Qtd Veículos carregados na semana:\n"
-    if not veiculos_dia.empty:
-        # Agrupa por Centro e Data contando a quantidade de placas
-        qtd_centro_data = veiculos_dia.groupby(
-            ["Centro-Armazem", "Pesagem Saída"])["Placa"].sum().reset_index()
-        qtd_centro_data["Pesagem Saída"] = pd.to_datetime(
-            qtd_centro_data["Pesagem Saída"], format="%d/%m/%Y")
-        qtd_centro_data = qtd_centro_data.sort_values(
-            ["Centro-Armazem", "Pesagem Saída"])
-        # Cria uma lista apenas com os centros que tiveram veículos
-        centros_com_veiculos = qtd_centro_data["Centro-Armazem"].unique()
-
-        for centro in centros_com_veiculos:
-            texto_wa += f"\n📍 *{centro}*\n"
-
-            # Filtra as datas apenas desse centro específico
-            dados_do_centro = qtd_centro_data[qtd_centro_data["Centro-Armazem"] == centro]
-
-            for _, row in dados_do_centro.iterrows():
-                texto_wa += f"   - {row['Pesagem Saída'].strftime("%d/%m/%Y")} = {int(row['Placa'])} veíc.\n"
-    else:
-        texto_wa += "  Nenhum veículo.\n"
-
+    if not relatorio_wa.empty:
+        resumo_relatorio_wa = relatorio_wa.groupby(["Centro-Armazem","Produto","Pesagem Saída"]).agg({'Peso Total Liquido':'sum','Placa':'count'}).reset_index()
+        texto_wa = f"*RESUMO OPERACIONAL -  PÁTIOS E EMBARQUES*\n"
+        centros_c_dados = resumo_relatorio_wa["Centro-Armazem"].unique()
+        for centro in centros_c_dados:
+            texto_wa += f"*📍 {centro}* \n\n"
+            dados_centro = resumo_relatorio_wa[resumo_relatorio_wa["Centro-Armazem"]==centro]
+            produtos_no_centro = dados_centro["Produto"].unique()
+            for produto in produtos_no_centro:
+                texto_wa += f"  `{produto}`\n"
+                dados_centro = dados_centro[dados_centro["Produto"]==produto]
+                for indice, registro in dados_centro.iterrows():
+                    texto_wa += f"* {registro["Pesagem Saída"]} - {registro["Peso Total Liquido"]:,.2f} Ton - {registro["Placa"]} Veic.\n"
+                texto_wa += f"\n"
+    else: texto_wa += " `Sem registro de embarque nos ultimos 7 dias`\n"
     # 3. Status Pátio Interno
-    texto_wa += "\n>​ 📊​ Patio Interno / Etapa Pendente:\n"
+    texto_wa += "\n> 📊​ Patio Interno / Etapa Pendente:\n"
     if not patio_interno_filt.empty:
         # Agrupa por Centro e Próxima Etapa, contando as ocorrências
         etapas_centro = patio_interno_filt.groupby(
@@ -364,7 +328,7 @@ with tab_whatsapp:
             for _, row in dados_do_centro.iterrows():
                 texto_wa += f"   - {row['Próxima Etapa']} = {row['Qtd']} veíc.\n"
     else:
-        texto_wa += "  Pátio vazio ⚠️​⚠️​⚠️.\n"
+        texto_wa += "  `Pátio vazio ⚠️​⚠️​⚠️`\n"
 
     # 4. Saldos de Contratos SAP
     texto_wa += "\n> 📜 Saldos contratos:\n"
@@ -385,7 +349,7 @@ with tab_whatsapp:
 
             texto_wa += f"  Contrato {contrato} - Centro {centro} - Venc. {venc} - Vol: {vol:,.2f} - {um} \n"
     else:
-        texto_wa += "  Sem saldos pendentes.\n"
+        texto_wa += "  `Sem saldos pendentes`\n"
     st.code(texto_wa, language="markdown")
 
 with tab_tabelas:
