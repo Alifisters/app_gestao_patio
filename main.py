@@ -5,7 +5,7 @@ from datetime import datetime
 from gestao_patio import exe_etl_siab, calculo_media
 
 
-@st.cache_data(ttl=1200)
+@st.cache_data(ttl=180000)
 def carregar_dados_api():
     patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo, ultm_atualizacao = exe_etl_siab()
     return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo, ultm_atualizacao
@@ -48,64 +48,55 @@ armazem_selecionado = st.sidebar.multiselect("Armazens:", ARMAZENS)
 tipo_pesagem_sel = st.sidebar.selectbox("Tipo de Pesagem", TIPO_PESAGEM)
 status_prazo = st.sidebar.multiselect(
     "Status Prazo Retirada", (list(analise_prazo["Status Atraso"].unique())))
-produto_sel = st.sidebar.multiselect(label="Produto(s):",options=(list(his_siab["Produto"].unique())))
+produto_sel = st.sidebar.multiselect(label="Produto(s):",options=(list(his_siab["Produto"].unique())), default=["MILHO EM GRAOS","SOJA EM GRAOS"])
 
 # Definição de Dataframes
 patio_interno_filt = patio_interno.copy()
 pesagem_dia = mov_ticket[["Placa", "Transacionador", "Produto", "Tipo Pesagem","Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]].copy().dropna(subset="Pesagem Saída")
 veiculos_dia = pesagem_dia.copy().sort_values("Pesagem Saída")
-dados_sap_filt = dados_sap[['Material', 'Docto.', 'Pedido',
-                            'Vál.até', 'Cidade', 'Nome', 'Centro', 'UM', 'Qtd.Pendente']]
+dados_sap_filt = dados_sap[['Material', 'Docto.', 'Pedido','Vál.até', 'Cidade', 'Nome', 'Centro', 'UM', 'Qtd.Pendente']]
 tempos_siab = his_siab
 relatorio_wa = mov_ticket
 
 # Condições utilizando filtros definidos
 if cliente_selecionado != "Todos":
-    patio_interno_filt = patio_interno_filt[patio_interno_filt["Transacionador"]
-                                            == cliente_selecionado]
-    pesagem_dia = pesagem_dia[pesagem_dia["Transacionador"]
-                              == cliente_selecionado]
-    veiculos_dia = veiculos_dia[veiculos_dia["Transacionador"]
-                                == cliente_selecionado]
-    dados_sap_filt = dados_sap_filt[dados_sap_filt["Nome"]
-                                    == cliente_selecionado]
-    tempos_siab = tempos_siab[tempos_siab["Transacionador"]
-                              == cliente_selecionado]
+    patio_interno_filt = patio_interno_filt[patio_interno_filt["Transacionador"] == cliente_selecionado]
+    pesagem_dia = pesagem_dia[pesagem_dia["Transacionador"] == cliente_selecionado]
+    veiculos_dia = veiculos_dia[veiculos_dia["Transacionador"] == cliente_selecionado]
+    dados_sap_filt = dados_sap_filt[dados_sap_filt["Nome"] == cliente_selecionado]
+    tempos_siab = tempos_siab[tempos_siab["Transacionador"] == cliente_selecionado]
     analise_prazo = analise_prazo[analise_prazo["Nome"] == cliente_selecionado]
     relatorio_wa = relatorio_wa[relatorio_wa["Transacionador"]==cliente_selecionado]
 
 if armazem_selecionado:
-    patio_interno_filt = patio_interno_filt[patio_interno_filt["Centro"].isin(
-        armazem_selecionado)]
-    pesagem_dia = pesagem_dia[pesagem_dia["Centro-Armazem"].isin(
-        armazem_selecionado)]
-    veiculos_dia = veiculos_dia[veiculos_dia["Centro-Armazem"].isin(
-        armazem_selecionado)]
-    patio_externo = patio_externo[patio_externo["Centro-Armazem"].isin(
-        armazem_selecionado)]
+    patio_interno_filt = patio_interno_filt[patio_interno_filt["Centro"].isin(armazem_selecionado)]
+    pesagem_dia = pesagem_dia[pesagem_dia["Centro-Armazem"].isin(armazem_selecionado)]
+    veiculos_dia = veiculos_dia[veiculos_dia["Centro-Armazem"].isin(armazem_selecionado)]
+    patio_externo = patio_externo[patio_externo["Centro-Armazem"].isin(armazem_selecionado)]
     tempos_siab = tempos_siab[tempos_siab["Centro"].isin(armazem_selecionado)]
-    dados_sap_filt = dados_sap_filt[dados_sap_filt["Centro"].isin(
-        armazem_selecionado)]
-    analise_prazo = analise_prazo[analise_prazo["Centro-Armazem"].isin(
-        armazem_selecionado)]
+    dados_sap_filt = dados_sap_filt[dados_sap_filt["Centro"].isin(armazem_selecionado)]
+    analise_prazo = analise_prazo[analise_prazo["Centro-Armazem"].isin(armazem_selecionado)]
     relatorio_wa = relatorio_wa[relatorio_wa["Centro-Armazem"].isin(armazem_selecionado)]
 
 if status_prazo:
-    analise_prazo = analise_prazo[analise_prazo["Status Atraso"].isin(
-        status_prazo)]
+    analise_prazo = analise_prazo[analise_prazo["Status Atraso"].isin(status_prazo)]
 
 if tipo_pesagem_sel:
-    patio_interno_filt = patio_interno_filt[patio_interno_filt["TipoPesagem"]
-                                            == tipo_pesagem_sel]
+    patio_interno_filt = patio_interno_filt[patio_interno_filt["TipoPesagem"]== tipo_pesagem_sel]
     pesagem_dia = pesagem_dia[pesagem_dia["Tipo Pesagem"] == tipo_pesagem_sel]
-    veiculos_dia = veiculos_dia[veiculos_dia["Tipo Pesagem"]
-                                == tipo_pesagem_sel]
-    patio_externo = patio_externo[patio_externo["TipoPesagem"]
-                                  == tipo_pesagem_sel]
+    veiculos_dia = veiculos_dia[veiculos_dia["Tipo Pesagem"]== tipo_pesagem_sel]
+    patio_externo = patio_externo[patio_externo["TipoPesagem"]== tipo_pesagem_sel]
     tempos_siab = tempos_siab[tempos_siab["TipoPesagem"] == tipo_pesagem_sel]
     relatorio_wa = relatorio_wa[relatorio_wa["Tipo Pesagem"]==tipo_pesagem_sel]
 
-tmp_entrada = calculo_media(
+if produto_sel:
+    patio_interno_filt = patio_interno_filt[patio_interno_filt["Produto"].isin(produto_sel)]
+    pesagem_dia = pesagem_dia[pesagem_dia["Produto"].isin(produto_sel)]
+    veiculos_dia = veiculos_dia[veiculos_dia["Produto"].isin(produto_sel)]
+    tempos_siab = tempos_siab[tempos_siab["Produto"].isin(produto_sel)]
+    relatorio_wa = relatorio_wa[relatorio_wa["Produto"].isin(produto_sel)]
+
+tmp_entrada = calculo_media(    
     tempos_siab, 'Check-in Portaria', 'Entrada Portaria')
 tmp_ini_carr = calculo_media(
     tempos_siab, 'Entrada Portaria', 'Pesagem de Entrada')
@@ -294,15 +285,14 @@ with tab_whatsapp:
     # 1. Volume Carregado na Semana
     if not relatorio_wa.empty:
         resumo_relatorio_wa = relatorio_wa.groupby(["Centro-Armazem","Produto","Pesagem Saída"]).agg({'Peso Total Liquido':'sum','Placa':'count'}).reset_index()
-        texto_wa = f"*RESUMO OPERACIONAL -  PÁTIOS E EMBARQUES*\n\n"
-        texto_wa += f"> 📈 Volume Carregado na semana:\n\n"
+        texto_wa = f"*RESUMO OPERACIONAL -  PÁTIOS E EMBARQUES*\n"
         centros_c_dados = resumo_relatorio_wa["Centro-Armazem"].unique()
         for centro in centros_c_dados:
             texto_wa += f"*📍 {centro}* \n\n"
             dados_centro = resumo_relatorio_wa[resumo_relatorio_wa["Centro-Armazem"]==centro]
             produtos_no_centro = dados_centro["Produto"].unique()
             for produto in produtos_no_centro:
-                texto_wa += f"       `{produto}`\n"
+                texto_wa += f"  `{produto}`\n"
                 dados_centro = dados_centro[dados_centro["Produto"]==produto]
                 for indice, registro in dados_centro.iterrows():
                     texto_wa += f"* {registro["Pesagem Saída"]} - {registro["Peso Total Liquido"]:,.2f} Ton - {registro["Placa"]} Veic.\n"
@@ -329,7 +319,7 @@ with tab_whatsapp:
             for _, row in dados_do_centro.iterrows():
                 texto_wa += f"   - {row['Próxima Etapa']} = {row['Qtd']} veíc.\n"
     else:
-        texto_wa += "    Pátio vazio ⚠️​⚠️​⚠️\n"
+        texto_wa += "  `Pátio vazio ⚠️​⚠️​⚠️`\n"
 
     # 4. Saldos de Contratos SAP
     texto_wa += "\n> 📜 Saldos contratos:\n"
