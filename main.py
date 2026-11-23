@@ -5,7 +5,7 @@ from datetime import datetime
 from gestao_patio import exe_etl_siab, calculo_media
 
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=1200)
 def carregar_dados_api():
     patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo, ultm_atualizacao = exe_etl_siab()
     return patio_interno, patio_externo, mov_ticket, his_siab, dados_sap, analise_prazo, ultm_atualizacao
