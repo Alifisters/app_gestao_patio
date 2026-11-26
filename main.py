@@ -240,7 +240,7 @@ with tab_graficos:
     # Gráfico de volume pesado por dia
     if not pesagem_dia.empty:
         pesagem_dia = pesagem_dia[["Produto","Peso Total Liquido", "Pesagem Saída", "Centro-Armazem"]
-                                  ].groupby(["Produto","Pesagem Saída", "Centro-Armazem"]).sum().reset_index()
+                                  ].groupby(["Produto","Pesagem Saída", "Centro-Armazem"]).sum().reset_index().sort_values(["Pesagem Saída"])
         fig_pesagem = px.bar(
             pesagem_dia,
             x='Centro-Armazem',
