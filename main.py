@@ -293,7 +293,7 @@ with tab_whatsapp:
             produtos_no_centro = dados_centro["Produto"].unique()
             for produto in produtos_no_centro:
                 texto_wa += f"  `{produto}`\n"
-                dados_centro = dados_centro[dados_centro["Produto"]==produto]
+                dados_produto = dados_centro[dados_centro["Produto"]==produto]
                 for indice, registro in dados_centro.iterrows():
                     texto_wa += f"* {registro["Pesagem Saída"]} - {registro["Peso Total Liquido"]:,.2f} Ton - {registro["Placa"]} Veic.\n"
                 texto_wa += f"\n"
